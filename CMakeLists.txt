@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(cpr CONFIG REQUIRED)
 
 find_package(Qt6 REQUIRED COMPONENTS
     Core
@@ -19,6 +20,7 @@ add_executable(wtr_lab_client
 
 target_link_libraries(wtr_lab_client PRIVATE
     fmt::fmt
+    cpr::cpr
     spdlog::spdlog
     Qt6::Core
     Qt6::Gui

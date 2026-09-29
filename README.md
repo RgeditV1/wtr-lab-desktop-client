@@ -19,18 +19,17 @@ is a `wtr-lab` desktop client for novel readers (currently  only support spanish
 
 first of all, make sure youre using Microsoft [vcpkg](https://github.com/microsoft/vcpkg)
 
-`Github Cli`
+### prepare the vcpkg submodule
+
 ```bash
-cd $HOME
-gh repo clone microsoft/vcpkg -- --depth 1 && cd ~/vcpkg &&
-./bootstrap-vcpkg.sh && ./vcpkg integrate install
+git submodule update --init --recursive
+./vcpkg/bootstrap-vcpkg.sh && ./vcpkg/vcpkg integrate install
 ```
 
-`git`
+### install deps
+
 ```bash
-cd $HOME
-git clone https://github.com/microsoft/vcpkg.git --depth 1 && cd ~/vcpkg &&
-./bootstrap-vcpkg.sh && ./vcpkg integrate install
+./vcpkg/vcpkg install
 ```
 
 ### Cmake Preset
