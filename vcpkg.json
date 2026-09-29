@@ -1,0 +1,10 @@
+{
+  "name": "wtr-lab-client",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "fmt",
+    "spdlog",
+    "cpr",
+    "qtbase"
+  ]
+}
