@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+    branches:
+    - test
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 1
+        
+      - name: Install System Dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install -y --no-install-recommends build-essential
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
+
+      - name: vcpkg build
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgJsonGlob: '**/vcpkg.json'
+        
+      - name: Build CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'wtr-release'
+          buildPreset: 'release'
