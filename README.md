@@ -27,3 +27,7 @@ cmake --preset wtr-release
 
 cmake --build --preset release
 ```
+
+## Icons By
+
+- <a href="https://iconscout.com/icons/bookshelf" class="text-underline font-size-sm" target="_blank">Bookshelf</a> by <a href="https://iconscout.com/contributors/rengised" class="text-underline font-size-sm" target="_blank">Alex Martynov</a>
