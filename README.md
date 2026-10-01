@@ -8,15 +8,11 @@ is a `wtr-lab` desktop client for novel readers (currently  only support spanish
 
 ## deps
 
-> [!NOTE]
->qt6 is needed, but isnt include with vcpkg, cause it take a long time to install
->so make sure to install it with your package manager
-
 1. **cpr** - wrapper of libcurl
 2. **libcurl** - for request
 3. **fmt** - formater
 4. **spdlog** - for logs
-5. **wxwidgets** - GUI
+5. **wxWidgets** - GUI
 6. **WebView** - html5 UI
 
 ## Build
