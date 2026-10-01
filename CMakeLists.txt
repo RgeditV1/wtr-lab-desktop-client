@@ -43,6 +43,15 @@ endif()
 
 add_executable(wtr-lab
     src/main.cpp
+    src/window.hpp
+    src/window.cpp
+)
+
+add_custom_command(
+    TARGET wtr-lab POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:wtr-lab>/assets"
 )
 
 target_link_libraries(wtr-lab PRIVATE
