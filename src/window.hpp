@@ -55,13 +55,13 @@ namespace App {
 namespace Widget {
     class Frame : public wxFrame {
     public:
-        Frame(const wxString& title);
+       explicit Frame(const wxString& title);
     private:
         void buildToolBar();
         void buildSideBar(bool show = false);
         void CollapseSideBar();
 
-        void is_sideBarVisible(wxCommandEvent& event);
+        void toggleSideBar(wxCommandEvent& event);
         void OnTimer(wxTimerEvent& event);
         void OnSize(wxSizeEvent& event);
         void searchBar(wxCommandEvent& event);

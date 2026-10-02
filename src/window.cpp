@@ -55,10 +55,6 @@ void Widget::Frame::buildToolBar()
                     }
                     if(item.id > ID_HOME_BUTTON) {
                         img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
-                        // the icon is very small, so rescale it to 32x32
-                        // may not very useful
-                    } else if (item.id == ID_NOVELS_BUTTON) {
-                        img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
                     } else {
                         img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
                     }
@@ -91,19 +87,21 @@ void Widget::Frame::buildToolBar()
     /*
     * ESPACIO PARA EL BINDING
     */
-    m_searchBar->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent& event) {
-        CollapseSideBar();
-        event.Skip();
-    });
+    if (m_searchBar != nullptr) {
+        m_searchBar->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent& event) {
+            CollapseSideBar();
+            event.Skip();
+        });
 
-    m_searchBar->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent& event) {
-        CollapseSideBar();
-        this->SetFocus();
-        event.Skip();
-    });
+        m_searchBar->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent& event) {
+            CollapseSideBar();
+            this->SetFocus();
+            event.Skip();
+        });
+    }
 
-    Bind(wxEVT_MENU, &Widget::Frame::is_sideBarVisible, this, ID_MENU_BUTTON);
-    Bind(wxEVT_BUTTON, &Widget::Frame::is_sideBarVisible, this, ID_SIDEBAR_BTN_CLOSE);
+    Bind(wxEVT_MENU, &Widget::Frame::toggleSideBar, this, ID_MENU_BUTTON);
+    Bind(wxEVT_BUTTON, &Widget::Frame::toggleSideBar, this, ID_SIDEBAR_BTN_CLOSE);
     Bind(wxEVT_TIMER, &Widget::Frame::OnTimer, this, ID_ANIM_TIMER);
     Bind(wxEVT_SIZE, &Widget::Frame::OnSize, this);
 
@@ -156,7 +154,7 @@ void Widget::Frame::buildSideBar(bool show) {
     m_sideBar->Raise();
 }
 
-void Widget::Frame::is_sideBarVisible(wxCommandEvent& event) {
+void Widget::Frame::toggleSideBar(wxCommandEvent& event) {
     if (!m_animTimer.IsRunning()) {
         m_sideBar->Show(true);
         m_sideBar->Raise();
