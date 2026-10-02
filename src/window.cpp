@@ -33,6 +33,9 @@ void Widget::Frame::buildToolBar()
                 if (img.IsOk()) {
                     if(item.id > ID_HOME_BUTTON) {
                         img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
+                        // the icon is very small, so rescale it to 32x32
+                    } else if (item.id == ID_NOVELS_BUTTON) {
+                        img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
                     } else {
                         img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
                     }
