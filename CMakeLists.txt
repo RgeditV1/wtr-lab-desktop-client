@@ -19,6 +19,7 @@ set(wxBUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(wxBUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(wxBUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(wxUSE_PKGCONFIG OFF CACHE BOOL "" FORCE)
+set(wxUSE_WEBVIEW OFF CACHE BOOL "" FORCE)
 set(wxUSE_ZLIB "builtin" CACHE STRING "" FORCE)
 set(wxUSE_EXPAT "builtin" CACHE STRING "" FORCE)
 set(wxUSE_LIBJPEG "builtin" CACHE STRING "" FORCE)
@@ -45,6 +46,7 @@ add_executable(wtr-lab
     src/main.cpp
     src/window.hpp
     src/window.cpp
+    src/toolbar_items.hpp
 )
 
 add_custom_command(

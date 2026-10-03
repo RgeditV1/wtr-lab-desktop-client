@@ -15,7 +15,9 @@ enum ID {
     */
     ID_SIDEBAR_BTN_CLOSE = 1001,
     ID_ANIM_TIMER = 1002,
-    //--------------------------
+    /*
+    * BOTONES DE LA TOOLBAR
+    */
     ID_MENU_BUTTON = 2000,
     ID_HOME_BUTTON = 2001,
     ID_SEARCH_BAR = 2002,
@@ -24,6 +26,12 @@ enum ID {
     ID_RANKING_BUTTON = 2005,
     ID_LADERBOARD_BUTTON = 2006,
     ID_PROFILE_BUTTON = 2007,
+    /*
+    * BOTONES PROPIOS DE LA SIDEBAR
+    */
+    ID_NOVEL_FINDER_BUTTON = 2008,
+    ID_TIER_LIST_BUTTON = 2009,
+    ID_FAQ_BUTTON = 2010,
 };
 
 // tipo de item

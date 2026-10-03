@@ -1,5 +1,5 @@
 #include "window.hpp"
-#include <vector>
+#include "toolbar_items.hpp"
 
 
 Widget::Frame::Frame(const wxString& title) 
@@ -17,31 +17,9 @@ Widget::Frame::Frame(const wxString& title)
 void Widget::Frame::buildToolBar()
 {
     wxToolBar* toolBar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_HORIZONTAL | wxTB_HORZ_TEXT);
-    
-    // Color oscuro para la Toolbar
     toolBar->SetBackgroundColour(wxColour(37, 37, 38));
 
-    /*
-    * ESTA FUE LA MANERA MAS FACIL QUE SE ME OCURRIO PARA BUILDEAR LA TOOLBAR
-    * YA QUE ERA MUY CANSADO IR UNO POR UNO Y ASIGNARLES SU DEBIDO ESPACIO
-    * SI ENCUENTRAS UNA MANERA MEJOR, AVISAME, YA QUE SI ESTOS BOTONES NO ENCUENTRAN SUS \
-    * ASSETS, LOS BOTONES QUE INCLUYAN ASSETS NO SE MOSTRARAN ._.
-    * PERO BUENO, INTUYO QUE NINGUNA PERSONA NORMAL BORRARIA LOS ASSETS DEL PROGRAMA, VERDAD?
-    */
-    std::vector<ToolItem> tools = {
-        { ToolType::Button, ID_MENU_BUTTON, "", "assets/menu.png", "Menú lateral" },
-        { ToolType::Button, ID_HOME_BUTTON, "WTR-LAB", "assets/wtr-lab.png", "Ir a inicio" },
-        { ToolType::Separator },
-        { ToolType::SearchCtrl },
-        { ToolType::StretchSpace },
-        { ToolType::Button, ID_LIBRARY_BUTTON, "Biblioteca", "assets/book-mark.png", "" },
-        { ToolType::Button, ID_NOVELS_BUTTON, "Novelas", "assets/bookshelf.png", "" },
-        { ToolType::Button, ID_RANKING_BUTTON, "Ranking", "assets/ranking.png", "" },
-        { ToolType::Button, ID_LADERBOARD_BUTTON, "Tabla de Clasificacion", "assets/laderboard.png", "" },
-        { ToolType::Button, ID_PROFILE_BUTTON, "", "assets/login.png", "Mi perfil" }
-    };
-
-    for (const auto& item : tools) {
+    for (const auto& item : Config::TOOLBAR_ITEMS) {
         switch (item.type) {
             case ToolType::Button: {
                 wxImage img(item.imagePath, wxBITMAP_TYPE_PNG);
@@ -53,7 +31,7 @@ void Widget::Frame::buildToolBar()
                             event.Skip();
                         }, item.id);
                     }
-                    if(item.id > ID_HOME_BUTTON) {
+                    if (item.id > ID_HOME_BUTTON) {
                         img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
                     } else {
                         img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
@@ -84,9 +62,6 @@ void Widget::Frame::buildToolBar()
 
     buildSideBar(false);
 
-    /*
-    * ESPACIO PARA EL BINDING
-    */
     if (m_searchBar != nullptr) {
         m_searchBar->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent& event) {
             CollapseSideBar();
@@ -106,48 +81,64 @@ void Widget::Frame::buildToolBar()
     Bind(wxEVT_SIZE, &Widget::Frame::OnSize, this);
 
     m_animTimer.SetOwner(this, ID_ANIM_TIMER);
-
 }
 
 void Widget::Frame::buildSideBar(bool show) {
     if (!m_sideBar) {
         m_sideBar = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_RAISED | wxTAB_TRAVERSAL);
         m_sideBar->SetBackgroundColour(wxColour(45, 45, 48));
-
-        m_btnClose = new wxButton(
-            m_sideBar, 
-            ID_SIDEBAR_BTN_CLOSE, 
-            "X", 
-            wxDefaultPosition, 
-            wxDefaultSize, 
-            wxBU_EXACTFIT | wxBORDER_NONE
-        );
-        m_btnClose->SetForegroundColour(*wxWHITE);
-
-        wxStaticText *label = new wxStaticText(
-            m_sideBar, wxID_ANY, "WTR-LAB", 
-            wxDefaultPosition, wxDefaultSize, 
-            wxALIGN_LEFT
-        );
+        wxBoxSizer* headerSizer = new wxBoxSizer(wxHORIZONTAL);
+        wxBoxSizer* sidebarSizer = new wxBoxSizer(wxVERTICAL);
+        wxStaticText *label = new wxStaticText(m_sideBar, wxID_ANY, "WTR-LAB", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
         label->SetForegroundColour(*wxWHITE);
         wxFont font = label->GetFont();
         font.SetWeight(wxFONTWEIGHT_BOLD);
         label->SetFont(font);
-        
-        wxBoxSizer* headerSizer = new wxBoxSizer(wxHORIZONTAL);
-        headerSizer->Add(label, 1, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, 10);
-        headerSizer->Add(m_btnClose, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT | wxTOP | wxBOTTOM, 5);
-
-        // Sizer Vertical Principal del Sidebar
-        wxBoxSizer* sidebarSizer = new wxBoxSizer(wxVERTICAL);
+        headerSizer->Add(label, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
+        wxImage imgClose("assets/close.png", wxBITMAP_TYPE_PNG);
+        if (imgClose.IsOk()) {
+            imgClose.Rescale(20, 20, wxIMAGE_QUALITY_HIGH);
+            wxStaticBitmap* closeIcon = new wxStaticBitmap(m_sideBar, ID_SIDEBAR_BTN_CLOSE, wxBitmap(imgClose));
+            closeIcon->SetCursor(wxCursor(wxCURSOR_HAND));
+            closeIcon->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent& event) {
+                CollapseSideBar();
+                this->SetFocus();
+            });
+            headerSizer->Add(closeIcon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT | wxTOP | wxBOTTOM, 5);
+        }
         sidebarSizer->Add(headerSizer, 0, wxEXPAND);
-
+        for (const auto& item : Config::SIDEBAR_ITEMS) {
+            switch (item.type) {
+                case ToolType::Button: {
+                    wxImage img(item.imagePath, wxBITMAP_TYPE_PNG);
+                    if (img.IsOk()) {
+                        img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
+                        wxBitmap bitmap(img);
+                        wxButton* button = new wxButton(m_sideBar, item.id, item.label, wxDefaultPosition, wxDefaultSize, wxBU_LEFT | wxBORDER_NONE);
+                        button->SetBitmap(bitmap);
+                        button->SetBackgroundColour(wxColour(45, 45, 48));
+                        button->SetForegroundColour(*wxWHITE);
+                        button->SetToolTip(item.tooltip);
+                        sidebarSizer->Add(button, 0, wxEXPAND | wxALL, 5);
+                        Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+                            CollapseSideBar();
+                            this->SetFocus();
+                            event.Skip();
+                        }, item.id);
+                    }
+                    break;
+                }
+                case ToolType::Separator: {
+                    sidebarSizer->AddSpacer(5);
+                }
+                default:
+                    break;
+            }
+        }
         m_sideBar->SetSizer(sidebarSizer);
     }
-
     m_isExpanded = show;
     m_currentWidth = show ? SIDEBAR_MAX_WIDTH : 0;
-
     wxSize FrameSize = GetClientSize();
     m_sideBar->SetSize(0, 0, m_currentWidth, FrameSize.GetHeight());
     m_sideBar->Show(show);
