@@ -10,15 +10,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # fmt / spdlog
 set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)
 
-# cpr (Usar la libcurl del sistema operativo)
-set(CPR_USE_SYSTEM_CURL ON CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-
 # wxWidgets
 set(wxBUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(wxBUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(wxBUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(wxUSE_PKGCONFIG OFF CACHE BOOL "" FORCE)
+set(wxUSE_WEBVIEW OFF CACHE BOOL "" FORCE)
 set(wxUSE_ZLIB "builtin" CACHE STRING "" FORCE)
 set(wxUSE_EXPAT "builtin" CACHE STRING "" FORCE)
 set(wxUSE_LIBJPEG "builtin" CACHE STRING "" FORCE)
@@ -26,7 +23,6 @@ set(wxUSE_LIBPNG "builtin" CACHE STRING "" FORCE)
 
 add_subdirectory(external/fmt)
 add_subdirectory(external/spdlog)
-add_subdirectory(external/cpr)
 add_subdirectory(external/wxWidgets)
 add_subdirectory(external/webview)
 
@@ -45,6 +41,7 @@ add_executable(wtr-lab
     src/main.cpp
     src/window.hpp
     src/window.cpp
+    src/config_items.hpp
 )
 
 add_custom_command(
@@ -57,7 +54,6 @@ add_custom_command(
 target_link_libraries(wtr-lab PRIVATE
     fmt::fmt
     spdlog::spdlog
-    cpr::cpr
     wx::core
     wx::base
     webview::core
