@@ -28,7 +28,7 @@ namespace Widget {
         void BuildSideBarItems(wxBoxSizer* sidebarSizer);
 
         // Helpers
-        wxBitmap LoadRescaledBitmap(const wxString& path, int width, int height);
+        wxBitmapBundle GetIconBundle(const wxString& path, int width, int height); // cache imgs
         void CollapseSideBar();
         void SetupSearchBarEvents();
         void BindGlobalEvents();
@@ -44,13 +44,10 @@ namespace Widget {
         wxSearchCtrl* m_searchBar = nullptr;
 
         wxPanel* m_sideBar = nullptr;
-        wxButton* m_btnClose = nullptr;
         wxTimer m_animTimer;
 
         bool m_isExpanded = false;
         int m_currentWidth = 0;
 
-        const int SIDEBAR_MAX_WIDTH = 250;
-        const int ANIM_SPEED = 15;
     };
 }

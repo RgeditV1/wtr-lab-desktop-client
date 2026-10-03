@@ -1,6 +1,15 @@
 #include "window.hpp"
 #include "config_items.hpp"
 
+#include <unordered_map>
+#include <fmt/format.h>
+
+constexpr size_t MAX_WIDTH = Config::SIDEBAR::SIDEBAR_MAX_WIDTH;
+constexpr size_t MIN_WIDTH = Config::SIDEBAR::SIDEBAR_MIN_WIDTH;
+constexpr size_t ANIM_SPEED = Config::SIDEBAR::SIDEBAR_ANIM_SPEED;
+
+using Config::ID;
+using Config::ToolType;
 
 Widget::Frame::Frame(const wxString& title) 
     : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(1080, 720))
@@ -56,9 +65,9 @@ void Widget::Frame::buildSideBar(bool show)
         
         headerSizer->Add(label, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
 
-        wxBitmap closeBmp = LoadRescaledBitmap("assets/close.png", 20, 20);
+        wxBitmapBundle closeBmp = GetIconBundle("assets/close.png", 20, 20);
         if (closeBmp.IsOk()) {
-            wxStaticBitmap* closeIcon = new wxStaticBitmap(m_sideBar, ID_SIDEBAR_BTN_CLOSE, closeBmp);
+            wxStaticBitmap* closeIcon = new wxStaticBitmap(m_sideBar, ID::ID_SIDEBAR_BTN_CLOSE, closeBmp);
             closeIcon->SetCursor(wxCursor(wxCURSOR_HAND));
             closeIcon->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent&) {
                 CollapseSideBar();
@@ -76,7 +85,7 @@ void Widget::Frame::buildSideBar(bool show)
     }
 
     m_isExpanded = show;
-    m_currentWidth = show ? SIDEBAR_MAX_WIDTH : 48;
+    m_currentWidth = show ? MAX_WIDTH : MIN_WIDTH;
 
     const wxSize frameSize = GetClientSize();
     m_sideBar->SetSize(0, 0, m_currentWidth, frameSize.GetHeight());
@@ -89,13 +98,13 @@ void Widget::Frame::BuildToolBarItems(wxToolBar* toolBar)
     for (const auto& item : Config::TOOLBAR_ITEMS) {
         switch (item.type) {
             case ToolType::Button: {
-                int iconSize = (item.id > ID_HOME_BUTTON) ? 24 : 32;
-                wxBitmap bmp = LoadRescaledBitmap(item.imagePath, iconSize, iconSize);
-                
+                int iconSize = item.iconSize;
+                wxBitmapBundle bmp = GetIconBundle(item.imagePath, iconSize, iconSize);
+
                 if (bmp.IsOk()) {
                     toolBar->AddTool(item.id, item.label, bmp, item.tooltip);
 
-                    if (item.id != ID_MENU_BUTTON) {
+                    if (item.id != ID::ID_MENU_BUTTON) {
                         toolBar->Bind(wxEVT_TOOL, [this](wxCommandEvent& event) {
                             CollapseSideBar();
                             event.Skip();
@@ -113,7 +122,7 @@ void Widget::Frame::BuildToolBarItems(wxToolBar* toolBar)
                 break;
 
             case ToolType::SearchCtrl:
-                m_searchBar = new wxSearchCtrl(toolBar, ID_SEARCH_BAR, "", wxDefaultPosition, wxSize(200, -1));
+                m_searchBar = new wxSearchCtrl(toolBar, ID::ID_SEARCH_BAR, "", wxDefaultPosition, wxSize(200, -1));
                 m_searchBar->SetDescriptiveText("Buscar...");
                 toolBar->AddControl(m_searchBar);
                 break;
@@ -126,7 +135,7 @@ void Widget::Frame::BuildSideBarItems(wxBoxSizer* sidebarSizer)
     for (const auto& item : Config::SIDEBAR_ITEMS) {
         switch (item.type) {
             case ToolType::Button: {
-                wxBitmap bmp = LoadRescaledBitmap(item.imagePath, 24, 24);
+                wxBitmapBundle bmp = GetIconBundle(item.imagePath, item.iconSize, item.iconSize);
                 if (bmp.IsOk()) {
                     wxButton* button = new wxButton(
                         m_sideBar, item.id, item.label, 
@@ -137,7 +146,6 @@ void Widget::Frame::BuildSideBarItems(wxBoxSizer* sidebarSizer)
                     button->SetBackgroundColour(wxColour(45, 45, 48));
                     button->SetForegroundColour(*wxWHITE);
                     button->SetToolTip(item.tooltip);
-                    button->SetMinSize(wxSize(SIDEBAR_MAX_WIDTH, 40));
 
                     button->Bind(wxEVT_ENTER_WINDOW, [button](wxMouseEvent& event) {
                         button->SetBackgroundColour(wxColour(62, 62, 66)); // Color más claro para hover
@@ -152,7 +160,7 @@ void Widget::Frame::BuildSideBarItems(wxBoxSizer* sidebarSizer)
                     });
 
                     // Si es el botón Home, dar el foco inicial o guardar referencia
-                    if (item.id == ID_HOME_BUTTON) {
+                    if (item.id == ID::ID_HOME_BUTTON) {
                         button->SetFocus();
                     }
 
@@ -177,14 +185,30 @@ void Widget::Frame::BuildSideBarItems(wxBoxSizer* sidebarSizer)
     }
 }
 
-wxBitmap Widget::Frame::LoadRescaledBitmap(const wxString& path, int width, int height)
+wxBitmapBundle Widget::Frame::GetIconBundle(const wxString& path, int width, int height)
 {
+    std::string key = fmt::format("{}_{}x{}", path.ToStdString(), width, height);
+
+    static std::unordered_map<std::string, wxBitmapBundle> bundleCache;
+
+    // Retornar si ya existe en memoria
+    auto it = bundleCache.find(key);
+    if (it != bundleCache.end()) {
+        return it->second;
+    }
+
+    // Cargar la imagen del disco solo la primera vez
     wxImage img(path, wxBITMAP_TYPE_PNG);
     if (!img.IsOk()) {
-        return wxNullBitmap;
+        return wxBitmapBundle();
     }
+
     img.Rescale(width, height, wxIMAGE_QUALITY_HIGH);
-    return wxBitmap(img);
+    wxBitmapBundle bundle = wxBitmapBundle::FromBitmap(wxBitmap(img));
+
+    // Guardar en caché y retornar
+    bundleCache[key] = bundle;
+    return bundle;
 }
 
 void Widget::Frame::SetupSearchBarEvents()
@@ -205,12 +229,12 @@ void Widget::Frame::SetupSearchBarEvents()
 
 void Widget::Frame::BindGlobalEvents()
 {
-    Bind(wxEVT_MENU, &Widget::Frame::toggleSideBar, this, ID_MENU_BUTTON);
-    Bind(wxEVT_BUTTON, &Widget::Frame::toggleSideBar, this, ID_SIDEBAR_BTN_CLOSE);
-    Bind(wxEVT_TIMER, &Widget::Frame::OnTimer, this, ID_ANIM_TIMER);
+    Bind(wxEVT_MENU, &Widget::Frame::toggleSideBar, this, ID::ID_MENU_BUTTON);
+    Bind(wxEVT_BUTTON, &Widget::Frame::toggleSideBar, this, ID::ID_SIDEBAR_BTN_CLOSE);
+    Bind(wxEVT_TIMER, &Widget::Frame::OnTimer, this, ID::ID_ANIM_TIMER);
     Bind(wxEVT_SIZE, &Widget::Frame::OnSize, this);
 
-    m_animTimer.SetOwner(this, ID_ANIM_TIMER);
+    m_animTimer.SetOwner(this, ID::ID_ANIM_TIMER);
 }
 
 void Widget::Frame::toggleSideBar(wxCommandEvent& event) {
@@ -224,20 +248,20 @@ void Widget::Frame::toggleSideBar(wxCommandEvent& event) {
 void Widget::Frame::OnTimer(wxTimerEvent& event) {
     if (m_isExpanded) {
         m_currentWidth -= ANIM_SPEED;
-        if (m_currentWidth <= 48) {
-            m_currentWidth = 48;
+        if (m_currentWidth <= MIN_WIDTH) {
+            m_currentWidth = MIN_WIDTH;
             m_isExpanded = false;
             m_sideBar->Show(false);
             m_animTimer.Stop();
         }
     } else {
         m_currentWidth += ANIM_SPEED;
-        if (m_currentWidth >= SIDEBAR_MAX_WIDTH) {
-            m_currentWidth = SIDEBAR_MAX_WIDTH;
+        if (m_currentWidth >= MAX_WIDTH) {
+            m_currentWidth = MAX_WIDTH;
             m_isExpanded = true;
             m_animTimer.Stop();
 
-            wxWindow* homeBtn = m_sideBar->FindWindow(ID_HOME_BUTTON);
+            wxWindow* homeBtn = m_sideBar->FindWindow(ID::ID_HOME_BUTTON);
             if (homeBtn) {
                 homeBtn->SetFocus();
             } else {
