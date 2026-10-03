@@ -1,5 +1,5 @@
 #include "window.hpp"
-#include "toolbar_items.hpp"
+#include "config_items.hpp"
 
 
 Widget::Frame::Frame(const wxString& title) 
@@ -11,138 +11,206 @@ Widget::Frame::Frame(const wxString& title)
     SetSizer(mainSizer);
     
     wxInitAllImageHandlers(); // Load Img Files
+    BindGlobalEvents();
     buildToolBar();
 }
 
 void Widget::Frame::buildToolBar()
 {
-    wxToolBar* toolBar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_HORIZONTAL | wxTB_HORZ_TEXT);
+    wxToolBar* toolBar = new wxToolBar(
+        this, 
+        wxID_ANY, 
+        wxDefaultPosition, 
+        wxDefaultSize, 
+        wxTB_HORIZONTAL | wxTB_HORZ_TEXT
+    );
     toolBar->SetBackgroundColour(wxColour(37, 37, 38));
 
-    for (const auto& item : Config::TOOLBAR_ITEMS) {
-        switch (item.type) {
-            case ToolType::Button: {
-                wxImage img(item.imagePath, wxBITMAP_TYPE_PNG);
-                if (img.IsOk()) {
-                    if (item.id != ID_MENU_BUTTON) {
-                        Bind(wxEVT_TOOL, [this](wxCommandEvent& event) {
-                            CollapseSideBar();
-                            this->SetFocus();
-                            event.Skip();
-                        }, item.id);
-                    }
-                    if (item.id > ID_HOME_BUTTON) {
-                        img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
-                    } else {
-                        img.Rescale(32, 32, wxIMAGE_QUALITY_HIGH);
-                    }
-                    toolBar->AddTool(item.id, item.label, wxBitmap(img), item.tooltip);
-                }
-                break;
-            }
-            case ToolType::Separator: {
-                toolBar->AddSeparator();
-                break;
-            }
-            case ToolType::StretchSpace: {
-                toolBar->AddStretchableSpace();
-                break;
-            }
-            case ToolType::SearchCtrl: {
-                m_searchBar = new wxSearchCtrl(toolBar, ID_SEARCH_BAR, "", wxDefaultPosition, wxSize(200, -1));
-                m_searchBar->SetDescriptiveText("Buscar...");
-                toolBar->AddControl(m_searchBar);
-                break;
-            }
-        }
-    }
+    BuildToolBarItems(toolBar);
 
     toolBar->Realize();
     GetSizer()->Add(toolBar, 0, wxEXPAND);
 
     buildSideBar(false);
 
-    if (m_searchBar != nullptr) {
-        m_searchBar->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent& event) {
-            CollapseSideBar();
-            event.Skip();
-        });
+    SetupSearchBarEvents();
+}
 
-        m_searchBar->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent& event) {
-            CollapseSideBar();
-            this->SetFocus();
-            event.Skip();
-        });
+void Widget::Frame::buildSideBar(bool show)
+{
+    if (!m_sideBar) {
+        m_sideBar = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_RAISED | wxTAB_TRAVERSAL);
+        m_sideBar->SetBackgroundColour(wxColour(45, 45, 48));
+        m_sideBar->SetDoubleBuffered(true);
+
+        wxBoxSizer* sidebarSizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* headerSizer  = new wxBoxSizer(wxHORIZONTAL);
+
+        // --- Header ---
+        wxStaticText* label = new wxStaticText(m_sideBar, wxID_ANY, "WTR-LAB", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+        label->SetForegroundColour(*wxWHITE);
+        
+        wxFont font = label->GetFont();
+        font.SetWeight(wxFONTWEIGHT_BOLD);
+        label->SetFont(font);
+        
+        headerSizer->Add(label, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
+
+        wxBitmap closeBmp = LoadRescaledBitmap("assets/close.png", 20, 20);
+        if (closeBmp.IsOk()) {
+            wxStaticBitmap* closeIcon = new wxStaticBitmap(m_sideBar, ID_SIDEBAR_BTN_CLOSE, closeBmp);
+            closeIcon->SetCursor(wxCursor(wxCURSOR_HAND));
+            closeIcon->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent&) {
+                CollapseSideBar();
+                this->SetFocus();
+            });
+            headerSizer->Add(closeIcon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT | wxTOP | wxBOTTOM, 5);
+        }
+
+        sidebarSizer->Add(headerSizer, 0, wxEXPAND);
+
+        BuildSideBarItems(sidebarSizer);
+
+        m_sideBar->SetSizer(sidebarSizer);
+        m_sideBar->Layout();
     }
 
+    m_isExpanded = show;
+    m_currentWidth = show ? SIDEBAR_MAX_WIDTH : 48;
+
+    const wxSize frameSize = GetClientSize();
+    m_sideBar->SetSize(0, 0, m_currentWidth, frameSize.GetHeight());
+    m_sideBar->Show(show);
+    m_sideBar->Raise();
+}
+
+void Widget::Frame::BuildToolBarItems(wxToolBar* toolBar)
+{
+    for (const auto& item : Config::TOOLBAR_ITEMS) {
+        switch (item.type) {
+            case ToolType::Button: {
+                int iconSize = (item.id > ID_HOME_BUTTON) ? 24 : 32;
+                wxBitmap bmp = LoadRescaledBitmap(item.imagePath, iconSize, iconSize);
+                
+                if (bmp.IsOk()) {
+                    toolBar->AddTool(item.id, item.label, bmp, item.tooltip);
+
+                    if (item.id != ID_MENU_BUTTON) {
+                        toolBar->Bind(wxEVT_TOOL, [this](wxCommandEvent& event) {
+                            CollapseSideBar();
+                            event.Skip();
+                        }, item.id);
+                    }
+                }
+                break;
+            }
+            case ToolType::Separator:
+                toolBar->AddSeparator();
+                break;
+
+            case ToolType::StretchSpace:
+                toolBar->AddStretchableSpace();
+                break;
+
+            case ToolType::SearchCtrl:
+                m_searchBar = new wxSearchCtrl(toolBar, ID_SEARCH_BAR, "", wxDefaultPosition, wxSize(200, -1));
+                m_searchBar->SetDescriptiveText("Buscar...");
+                toolBar->AddControl(m_searchBar);
+                break;
+        }
+    }
+}
+
+void Widget::Frame::BuildSideBarItems(wxBoxSizer* sidebarSizer)
+{
+    for (const auto& item : Config::SIDEBAR_ITEMS) {
+        switch (item.type) {
+            case ToolType::Button: {
+                wxBitmap bmp = LoadRescaledBitmap(item.imagePath, 24, 24);
+                if (bmp.IsOk()) {
+                    wxButton* button = new wxButton(
+                        m_sideBar, item.id, item.label, 
+                        wxDefaultPosition, wxDefaultSize, 
+                        wxBU_LEFT | wxBORDER_NONE
+                    );
+                    button->SetBitmap(bmp);
+                    button->SetBackgroundColour(wxColour(45, 45, 48));
+                    button->SetForegroundColour(*wxWHITE);
+                    button->SetToolTip(item.tooltip);
+                    button->SetMinSize(wxSize(SIDEBAR_MAX_WIDTH, 40));
+
+                    button->Bind(wxEVT_ENTER_WINDOW, [button](wxMouseEvent& event) {
+                        button->SetBackgroundColour(wxColour(62, 62, 66)); // Color más claro para hover
+                        button->Refresh();
+                        event.Skip();
+                    });
+
+                    button->Bind(wxEVT_LEAVE_WINDOW, [button](wxMouseEvent& event) {
+                        button->SetBackgroundColour(wxColour(45, 45, 48)); // Volver al color base
+                        button->Refresh();
+                        event.Skip();
+                    });
+
+                    // Si es el botón Home, dar el foco inicial o guardar referencia
+                    if (item.id == ID_HOME_BUTTON) {
+                        button->SetFocus();
+                    }
+
+                    sidebarSizer->Add(button, 0, wxEXPAND | wxTOP | wxBOTTOM, 4);
+
+                    // Al presionar un botón, se establece el foco en él
+                    button->Bind(wxEVT_BUTTON, [this, button](wxCommandEvent& event) {
+                        button->SetFocus();
+                        CollapseSideBar();
+                        event.Skip();
+                    });
+                }
+                break;
+            }
+            case ToolType::Separator:
+                sidebarSizer->AddSpacer(5);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+wxBitmap Widget::Frame::LoadRescaledBitmap(const wxString& path, int width, int height)
+{
+    wxImage img(path, wxBITMAP_TYPE_PNG);
+    if (!img.IsOk()) {
+        return wxNullBitmap;
+    }
+    img.Rescale(width, height, wxIMAGE_QUALITY_HIGH);
+    return wxBitmap(img);
+}
+
+void Widget::Frame::SetupSearchBarEvents()
+{
+    if (!m_searchBar) return;
+
+    m_searchBar->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent& event) {
+        CollapseSideBar();
+        event.Skip();
+    });
+
+    m_searchBar->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent& event) {
+        CollapseSideBar();
+        this->SetFocus();
+        event.Skip();
+    });
+}
+
+void Widget::Frame::BindGlobalEvents()
+{
     Bind(wxEVT_MENU, &Widget::Frame::toggleSideBar, this, ID_MENU_BUTTON);
     Bind(wxEVT_BUTTON, &Widget::Frame::toggleSideBar, this, ID_SIDEBAR_BTN_CLOSE);
     Bind(wxEVT_TIMER, &Widget::Frame::OnTimer, this, ID_ANIM_TIMER);
     Bind(wxEVT_SIZE, &Widget::Frame::OnSize, this);
 
     m_animTimer.SetOwner(this, ID_ANIM_TIMER);
-}
-
-void Widget::Frame::buildSideBar(bool show) {
-    if (!m_sideBar) {
-        m_sideBar = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_RAISED | wxTAB_TRAVERSAL);
-        m_sideBar->SetBackgroundColour(wxColour(45, 45, 48));
-        wxBoxSizer* headerSizer = new wxBoxSizer(wxHORIZONTAL);
-        wxBoxSizer* sidebarSizer = new wxBoxSizer(wxVERTICAL);
-        wxStaticText *label = new wxStaticText(m_sideBar, wxID_ANY, "WTR-LAB", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
-        label->SetForegroundColour(*wxWHITE);
-        wxFont font = label->GetFont();
-        font.SetWeight(wxFONTWEIGHT_BOLD);
-        label->SetFont(font);
-        headerSizer->Add(label, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
-        wxImage imgClose("assets/close.png", wxBITMAP_TYPE_PNG);
-        if (imgClose.IsOk()) {
-            imgClose.Rescale(20, 20, wxIMAGE_QUALITY_HIGH);
-            wxStaticBitmap* closeIcon = new wxStaticBitmap(m_sideBar, ID_SIDEBAR_BTN_CLOSE, wxBitmap(imgClose));
-            closeIcon->SetCursor(wxCursor(wxCURSOR_HAND));
-            closeIcon->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent& event) {
-                CollapseSideBar();
-                this->SetFocus();
-            });
-            headerSizer->Add(closeIcon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT | wxTOP | wxBOTTOM, 5);
-        }
-        sidebarSizer->Add(headerSizer, 0, wxEXPAND);
-        for (const auto& item : Config::SIDEBAR_ITEMS) {
-            switch (item.type) {
-                case ToolType::Button: {
-                    wxImage img(item.imagePath, wxBITMAP_TYPE_PNG);
-                    if (img.IsOk()) {
-                        img.Rescale(24, 24, wxIMAGE_QUALITY_HIGH);
-                        wxBitmap bitmap(img);
-                        wxButton* button = new wxButton(m_sideBar, item.id, item.label, wxDefaultPosition, wxDefaultSize, wxBU_LEFT | wxBORDER_NONE);
-                        button->SetBitmap(bitmap);
-                        button->SetBackgroundColour(wxColour(45, 45, 48));
-                        button->SetForegroundColour(*wxWHITE);
-                        button->SetToolTip(item.tooltip);
-                        sidebarSizer->Add(button, 0, wxEXPAND | wxALL, 5);
-                        Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
-                            CollapseSideBar();
-                            this->SetFocus();
-                            event.Skip();
-                        }, item.id);
-                    }
-                    break;
-                }
-                case ToolType::Separator: {
-                    sidebarSizer->AddSpacer(5);
-                }
-                default:
-                    break;
-            }
-        }
-        m_sideBar->SetSizer(sidebarSizer);
-    }
-    m_isExpanded = show;
-    m_currentWidth = show ? SIDEBAR_MAX_WIDTH : 0;
-    wxSize FrameSize = GetClientSize();
-    m_sideBar->SetSize(0, 0, m_currentWidth, FrameSize.GetHeight());
-    m_sideBar->Show(show);
-    m_sideBar->Raise();
 }
 
 void Widget::Frame::toggleSideBar(wxCommandEvent& event) {
@@ -156,8 +224,8 @@ void Widget::Frame::toggleSideBar(wxCommandEvent& event) {
 void Widget::Frame::OnTimer(wxTimerEvent& event) {
     if (m_isExpanded) {
         m_currentWidth -= ANIM_SPEED;
-        if (m_currentWidth <= 0) {
-            m_currentWidth = 0;
+        if (m_currentWidth <= 48) {
+            m_currentWidth = 48;
             m_isExpanded = false;
             m_sideBar->Show(false);
             m_animTimer.Stop();
@@ -169,13 +237,18 @@ void Widget::Frame::OnTimer(wxTimerEvent& event) {
             m_isExpanded = true;
             m_animTimer.Stop();
 
-            m_sideBar->SetFocus();
+            wxWindow* homeBtn = m_sideBar->FindWindow(ID_HOME_BUTTON);
+            if (homeBtn) {
+                homeBtn->SetFocus();
+            } else {
+                m_sideBar->SetFocus();
+            }
         }
     }
 
     wxSize FrameSize = GetClientSize();
     m_sideBar->SetSize(0, 0, m_currentWidth, FrameSize.GetHeight());
-    m_sideBar->Layout();
+    //m_sideBar->Layout();
     m_sideBar->Refresh();
 }
 

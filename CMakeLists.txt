@@ -46,7 +46,7 @@ add_executable(wtr-lab
     src/main.cpp
     src/window.hpp
     src/window.cpp
-    src/toolbar_items.hpp
+    src/config_items.hpp
 )
 
 add_custom_command(

@@ -1,55 +1,11 @@
 #pragma once
 #include <wx/wx.h>
 #include <wx/srchctrl.h>
-#include <string>
 
 namespace Widget {
     class Frame;
     class Panel;
 }
-
-// ids
-enum ID {
-    /*
-    * PARA FINES DE ANIMACION DE SIDEBAR
-    */
-    ID_SIDEBAR_BTN_CLOSE = 1001,
-    ID_ANIM_TIMER = 1002,
-    /*
-    * BOTONES DE LA TOOLBAR
-    */
-    ID_MENU_BUTTON = 2000,
-    ID_HOME_BUTTON = 2001,
-    ID_SEARCH_BAR = 2002,
-    ID_LIBRARY_BUTTON = 2003,
-    ID_NOVELS_BUTTON = 2004,
-    ID_RANKING_BUTTON = 2005,
-    ID_LADERBOARD_BUTTON = 2006,
-    ID_PROFILE_BUTTON = 2007,
-    /*
-    * BOTONES PROPIOS DE LA SIDEBAR
-    */
-    ID_NOVEL_FINDER_BUTTON = 2008,
-    ID_TIER_LIST_BUTTON = 2009,
-    ID_FAQ_BUTTON = 2010,
-};
-
-// tipo de item
-enum class ToolType {
-    Button,
-    Separator,
-    StretchSpace,
-    SearchCtrl
-};
-
-// toolbar items
-struct ToolItem {
-    ToolType type = ToolType::Button;
-    ID id;
-    std::string label = "";
-    std::string imagePath ="";
-    std::string tooltip = "";
-};
 
 namespace App {
     class Window : public wxApp {
@@ -67,11 +23,20 @@ namespace Widget {
     private:
         void buildToolBar();
         void buildSideBar(bool show = false);
-        void CollapseSideBar();
+        // Métodos para construir elementos individualmente
+        void BuildToolBarItems(wxToolBar* toolBar);
+        void BuildSideBarItems(wxBoxSizer* sidebarSizer);
 
+        // Helpers
+        wxBitmap LoadRescaledBitmap(const wxString& path, int width, int height);
+        void CollapseSideBar();
+        void SetupSearchBarEvents();
+        void BindGlobalEvents();
         void toggleSideBar(wxCommandEvent& event);
         void OnTimer(wxTimerEvent& event);
         void OnSize(wxSizeEvent& event);
+
+        // Acciones
         void searchBar(wxCommandEvent& event);
         void homeButton(wxCommandEvent& event);
         void menuButton(wxCommandEvent& event);
